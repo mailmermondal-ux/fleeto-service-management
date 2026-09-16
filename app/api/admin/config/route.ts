@@ -1,0 +1,12 @@
+import {NextResponse} from "next/server";
+import {getCurrentUser,assertPermission} from "@/lib/auth";
+import {createAdminClient} from "@/lib/supabase/admin";
+const allowedSections=["dashboard","service_create","services","workflow","masters","reporting"];
+export async function POST(req:Request){const user=await getCurrentUser();if(!user)return new NextResponse("Unauthorized",{status:401});try{await assertPermission(user.id,"config.manage")}catch{return new NextResponse("Forbidden",{status:403})}
+ const f=await req.formData();const op=String(f.get("operation")||"");const db=createAdminClient();let result:{error:any}={error:new Error("Invalid operation")};const label=String(f.get("display_name")||"").trim();
+ if(op==="section"&&allowedSections.includes(String(f.get("section_key")))&&label.length>0&&label.length<=80){result=await db.from("section_config").update({display_name:label,updated_by:user.id,updated_at:new Date().toISOString()}).eq("section_key",String(f.get("section_key")))}
+ if(op==="field"&&allowedSections.includes(String(f.get("section_key")))&&label.length>0&&label.length<=80){const key=String(f.get("field_key")||"");const type=String(f.get("field_type")||"");if(/^[a-z][a-z0-9_]{0,62}$/.test(key)&&["text","number","date","select","textarea"].includes(type)){const options=String(f.get("options")||"").split(",").map(s=>s.trim()).filter(Boolean);if(type!=="select"||options.length){result=await db.from("field_config").insert({section_key:String(f.get("section_key")),field_key:key,display_name:label,field_type:type,required:f.has("required"),options});}}}
+ if(op==="edit_field"&&label.length>0&&label.length<=80&&/^[0-9a-f-]{36}$/i.test(String(f.get("field_id")||""))){result=await db.from("field_config").update({display_name:label,required:f.has("required"),enabled:f.has("enabled")}).eq("id",String(f.get("field_id"))).eq("is_custom",true)}
+ if(op==="rule"&&f.get("rule_key")==="tat_sla_days"){const days=Number(f.get("parameter_value"));if(Number.isInteger(days)&&days>=1&&days<=3650)result=await db.from("validation_rules").update({parameter_value:days,enabled:true}).eq("rule_key","tat_sla_days")}
+ if(result.error)return new NextResponse(result.error.message,{status:400});await db.from("audit_logs").insert({user_id:user.id,entity_type:"configuration",action:`CONFIG_${op.toUpperCase()}`,new_data:Object.fromEntries([...f.entries()].filter(([key])=>key!=="password"))});return NextResponse.redirect(new URL("/admin/config",req.url),303);
+}

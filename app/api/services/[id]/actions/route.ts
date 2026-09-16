@@ -12,7 +12,7 @@ async function uploadDoc(db:any, serviceId:string, file:File, type:string, userI
   if(de) throw de; return data.id;
 }
 async function status(db:any,id:string,status:string,userId:string,notes?:string){
-  await db.from("service_records").update({current_status:status,updated_by:userId,updated_at:new Date().toISOString()}).eq("id",id);
+  await db.from("service_records").update({current_status:status,...(status==="CLOSED"?{tat_status:"CLOSED"}:{}),updated_by:userId,updated_at:new Date().toISOString()}).eq("id",id);
   await db.from("status_history").insert({service_record_id:id,status,changed_by:userId,notes:notes||null});
 }
 export async function POST(req:Request,{params}:{params:Promise<{id:string}>}){
