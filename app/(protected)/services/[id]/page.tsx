@@ -17,7 +17,7 @@ export default async function ServiceDetail({ params }: { params: Promise<{ id:s
   const outbound=(logistics??[]).find((x:any)=>x.leg==="TO_SUPPLIER"); const inbound=(logistics??[]).find((x:any)=>x.leg==="TO_FACTORY");
   const tats=calculateTats(r as ServiceRecord,outbound,inbound);
   return <div className="space-y-6">
-    <div className="flex flex-wrap items-start justify-between gap-3"><div><div className="text-sm text-slate-500">Service record</div><h1 className="text-2xl font-bold">{r.serial_number}</h1><div className="mt-2 flex flex-wrap gap-2"><StatusBadge status={r.current_status}/><span className="badge bg-indigo-100 text-indigo-900">TAT: {r.tat_status||"OPEN"}</span></div></div><a href="/services" className="btn-secondary">Back to list</a></div>
+    <div className="flex flex-wrap items-start justify-between gap-3"><div><div className="text-sm text-slate-500">Service record</div><h1 className="text-2xl font-bold">{r.serial_number}</h1><div className="mt-2 flex flex-wrap gap-2"><StatusBadge status={r.current_status}/><span className="badge bg-red-50 text-red-800">TAT: {r.tat_status||"OPEN"}</span></div></div><a href="/services" className="btn-secondary">Back to list</a></div>
     <div className="grid gap-5 xl:grid-cols-3"><section className="card p-5 xl:col-span-2"><h2 className="font-semibold">Material & supply chain</h2><div className="mt-4 grid gap-4 md:grid-cols-2"><Info l="Material" v={r.material_description}/><Info l="Received at R&D" v={r.received_date_rnd}/><Info l="Sale date" v={r.sale_date}/><Info l="Mode of receiving" v={r.receiving_mode==="FLEETO_FACTORY"?"From FLEETO Factory":"Direct from Business Partners"}/><Info l="Warranty" v={r.warranty_status?.replaceAll("_"," ")}/><Info l="TAT status" v={r.tat_status}/>{Object.entries(r.custom_fields||{}).map(([k,v])=><Info key={k} l={k.replaceAll("_"," ")} v={v}/>)}<Info l="Supplier" v={r.supplier_name}/><Info l="Distributor" v={r.distributor_name}/><Info l="Dealer" v={r.dealer_name}/><div className="md:col-span-2"><Info l="Defined issue" v={r.defined_issue}/></div></div></section>
     <section className="card p-5"><h2 className="font-semibold">TAT (days)</h2><div className="mt-4 grid grid-cols-2 gap-3"><Tat l="Overall" v={tats.overall ?? tats.sameReturn}/><Tat l="Same Return" v={tats.sameReturn}/><Tat l="Service Station" v={tats.station}/><Tat l="Supplier" v={tats.supplier}/><Tat l="Logistics → Supplier" v={tats.toSupplier}/><Tat l="Logistics → Factory" v={tats.toFactory}/></div></section></div>
     <WorkflowNodes status={r.current_status} condition={r.material_condition}/>
@@ -42,18 +42,47 @@ function Workflow({record:r}:{record:any}){
     {r.current_status==="UNDER_SERVICING"&&<ActionForm action={action} name="complete_servicing" title="Complete servicing / submit RCA" multipart><div className="grid gap-3 md:grid-cols-2"><Field label="RCA Document"><input name="rca_document" type="file" required/></Field><Field label="Servicing Completion Date"><input name="servicing_completion_date" type="date" required/></Field><Field label="Repair Action"><input name="repair_action"/></Field><Field label="Replaced Components"><input name="replaced_components"/></Field><div className="md:col-span-2"><Field label="Supplier Remarks"><textarea name="supplier_remarks" rows={3}/></Field></div></div></ActionForm>}
     {r.current_status==="SERVICING_COMPLETED"&&<ActionForm action={action} name="dispatch_factory" title="Return from supplier / dispatch to factory"><div className="grid gap-3 md:grid-cols-4"><Field label="Logistics Company"><input name="logistic_company" required/></Field><Field label="Tracking ID"><input name="tracking_id" required/></Field><Field label="ETA Date"><input name="eta_date" type="date" required/></Field><Field label="Supplier Dispatch Date"><input name="dispatch_date" type="date" required/></Field></div></ActionForm>}
     {r.current_status==="IN_TRANSIT_TO_FACTORY"&&<ActionForm action={action} name="factory_received" title="Confirm factory receipt & close"><Field label="Factory Receiving Date"><input name="factory_receiving_date" type="date" required/></Field></ActionForm>}
-    {r.current_status==="CLOSED"&&<div className="rounded-lg bg-emerald-50 p-4 text-sm text-emerald-800">This service record is closed. It is read-only except for authorized administrators.</div>}
+    {r.current_status==="CLOSED"&&<div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-950">This service record is closed. It is read-only except for authorized administrators.</div>}
   </div></section>
 }
 function ActionForm({action,name,title,children,multipart}:{action:string;name:string;title:string;children:React.ReactNode;multipart?:boolean}){return <form action={action} method="post" encType={multipart?"multipart/form-data":undefined} className="space-y-4"><input type="hidden" name="action" value={name}/><div className="font-medium">{title}</div>{children}<button className="btn-primary" type="submit">Confirm action</button></form>}
 function Field({label,children}:{label:string;children:React.ReactNode}){return <div className="space-y-1"><label>{label}</label>{children}</div>}
 
 function WorkflowNodes({status,condition}:{status:string;condition:string|null}) {
- const common=[['MATERIAL_RECEIVED','Received'],['TESTING_STARTED','Testing']];
- const ok=[['MATERIAL_OK_SAME_RETURN','Same return'],['CLOSED','Closed']];
- const defective=[['SEND_TO_SUPPLIER_END','Supplier dispatch'],['IN_TRANSIT_TO_SUPPLIER','To supplier'],['UNDER_SERVICING','Supplier servicing'],['SERVICING_COMPLETED','RCA complete'],['IN_TRANSIT_TO_FACTORY','To factory'],['CLOSED','Closed']];
- const steps=[...common,...(condition==='OK'?ok:defective)];
- const aliases:Record<string,string>={RECEIVED_AT_SUPPLIER_END:'UNDER_SERVICING',RETURNING_FROM_SUPPLIER_END:'IN_TRANSIT_TO_FACTORY',BATTERY_RECEIVED_AT_FACTORY:'CLOSED'};
- const current=steps.findIndex(([key])=>key===(aliases[status]||status));
- return <section className="card p-5"><h2 className="text-lg font-bold">Service journey</h2><p className="mb-5 text-sm text-slate-500">Follow the connected steps in sequence. Only the current action is available below.</p><ol className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">{steps.map(([key,label],index)=><li key={key} className={`relative rounded-xl border-2 p-4 ${index<current?'border-emerald-200 bg-emerald-50':index===current?'border-indigo-500 bg-indigo-50 shadow-sm':'border-slate-200 bg-slate-50 opacity-60'}`}><span className="text-xs font-bold uppercase tracking-widest">Step {index+1} · {index<current?'Completed':index===current?'Current':'Locked'}</span><div className="mt-2 font-semibold">{label}</div>{index<steps.length-1&&<span aria-hidden className="absolute right-2 top-2 text-indigo-500">→</span>}</li>)}</ol></section>
+  // The branch follows the material decision. Before testing is completed,
+  // show the defective route as a preview; only the current stage is actionable.
+  const shared = [{key:"MATERIAL_RECEIVED",label:"Received",description:"Material registered"},{key:"TESTING_STARTED",label:"Testing",description:"Inspection & report"}];
+  const ok = [{key:"MATERIAL_OK_SAME_RETURN",label:"Same return",description:"No defect found"},{key:"CLOSED",label:"Closed",description:"Returned to customer"}];
+  const defective = [
+    {key:"SEND_TO_SUPPLIER_END",label:"Supplier dispatch",description:"Prepare shipment"},
+    {key:"IN_TRANSIT_TO_SUPPLIER",label:"To supplier",description:"Outbound logistics"},
+    {key:"UNDER_SERVICING",label:"Supplier servicing",description:"Receipt & repair"},
+    {key:"SERVICING_COMPLETED",label:"RCA complete",description:"Report submitted"},
+    {key:"IN_TRANSIT_TO_FACTORY",label:"To factory",description:"Return logistics"},
+    {key:"CLOSED",label:"Closed",description:"Factory receipt"},
+  ];
+  const steps = [...shared,...(condition==="OK"?ok:defective)];
+  // Intermediate statuses are deliberately mapped to their display milestones;
+  // the original database states and action validations are unchanged.
+  const aliases:Record<string,string>={RECEIVED_AT_SUPPLIER_END:"UNDER_SERVICING",RETURNING_FROM_SUPPLIER_END:"IN_TRANSIT_TO_FACTORY",BATTERY_RECEIVED_AT_FACTORY:"CLOSED"};
+  const currentKey=aliases[status]||status;
+  const current=Math.max(0,steps.findIndex(step=>step.key===currentKey));
+  const isClosed=status==="CLOSED";
+  return <section className="card journey-panel overflow-hidden p-5 sm:p-7" aria-label="Service journey">
+    <div className="mb-6 flex flex-wrap items-start justify-between gap-3"><div><div className="journey-eyebrow">SERVICE LIFECYCLE</div><h2 className="mt-1 text-xl font-bold tracking-tight sm:text-2xl">Service journey</h2><p className="mt-1 text-sm text-slate-500">Track every milestone in order. Only the current action is available below.</p></div><span className="journey-progress-label">{isClosed?"Journey complete":`Step ${current+1} of ${steps.length}`}</span></div>
+    <div className="journey-scroll" role="region" aria-label="Workflow progress; swipe horizontally on mobile" tabIndex={0}>
+      <ol className="journey-track" style={{gridTemplateColumns:`repeat(${steps.length}, minmax(116px, 1fr))`}}>
+        {steps.map((step,index)=>{
+          const complete=isClosed||index<current;
+          const active=!isClosed&&index===current;
+          return <li key={step.key} className={`journey-step ${complete?"journey-done":active?"journey-active":"journey-locked"}`} aria-current={active?"step":undefined}>
+            <div className="journey-node-row"><span className="journey-node" aria-label={`${step.label}: ${complete?"completed":active?"current":"locked"}`}>{complete?<svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-6 w-6"><path d="m5 12 4.5 4.5L19 7" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"/></svg>:active?<span className="journey-node-center"/>:<span className="journey-node-empty"/>}</span>{index<steps.length-1&&<span className="journey-connector" aria-hidden="true"/>}</div>
+            <div className="journey-step-meta">{`STEP ${String(index+1).padStart(2,"0")}`} · {complete?"COMPLETED":active?"CURRENT":"UPCOMING"}</div>
+            <div className="journey-step-title">{step.label}</div><div className="journey-step-description">{step.description}</div>
+          </li>;
+        })}
+      </ol>
+    </div>
+    <div className="journey-footer"><span className="journey-legend"><span className="journey-legend-dot bg-red-600"/> Completed</span><span className="journey-legend"><span className="journey-legend-dot border-2 border-red-600 bg-white"/> Current</span><span className="journey-legend"><span className="journey-legend-dot border-2 border-slate-300 bg-white"/> Upcoming</span></div>
+  </section>;
 }

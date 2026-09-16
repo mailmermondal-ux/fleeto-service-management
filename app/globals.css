@@ -2,14 +2,40 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { color-scheme: light; }
+:root { color-scheme: light; --fleeto-red: #be1220; --fleeto-black: #101014; }
 body { @apply bg-slate-50 text-slate-900 antialiased; font-family: Arial, Helvetica, sans-serif; }
-input, select, textarea { @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-200; }
+input, select, textarea { @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-red-600 focus:ring-2 focus:ring-red-100; }
 label { @apply text-sm font-medium text-slate-700; }
 button { @apply disabled:cursor-not-allowed disabled:opacity-50; }
 .card { @apply rounded-xl border border-slate-200 bg-white shadow-sm; }
 .btn { @apply inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold transition; }
-.btn-primary { @apply btn bg-indigo-700 text-white hover:bg-indigo-800; }
-.nav-link { @apply rounded-lg px-3 py-2 text-slate-200 transition-colors hover:bg-slate-800 hover:text-white; }
-.btn-secondary { @apply btn border border-slate-300 bg-white text-slate-700 hover:bg-slate-50; }
+.btn-primary { @apply btn bg-red-700 text-white hover:bg-red-800; }
+.nav-link { @apply rounded-lg px-3 py-2 text-slate-200 transition-colors hover:bg-zinc-800 hover:text-white; }
+.btn-secondary { @apply btn border border-slate-300 bg-white text-slate-800 hover:border-red-300 hover:bg-red-50; }
 .badge { @apply inline-flex rounded-full px-2.5 py-1 text-xs font-semibold; }
+/* Accessible horizontal node-based workflow; the scroll region is keyboard focusable. */
+.journey-panel { background: linear-gradient(120deg,#fff 0%,#fff 72%,#fff8f8 100%); }
+.journey-eyebrow { color: #b91c1c; font-size: 10px; font-weight: 800; letter-spacing: .20em; }
+.journey-progress-label { border: 1px solid #fecaca; background: #fff1f2; color:#991b1b; border-radius: 999px; padding: 6px 12px; font-size: 11px; font-weight: 800; white-space: nowrap; }
+.journey-scroll { overflow-x:auto; padding-bottom:12px; scrollbar-color:#a1a1aa transparent; scrollbar-width:thin; outline-offset: 4px; }
+.journey-scroll:focus-visible { outline:2px solid #be1220; border-radius:8px; }
+.journey-track { display:grid; list-style:none; margin:0; padding:8px 0 3px; width:100%; min-width:max-content; }
+.journey-step { min-width:116px; position:relative; padding-right:12px; }
+.journey-node-row { display:flex; align-items:center; height:49px; width:100%; }
+.journey-node { width:43px; height:43px; border-radius:50%; border:2px solid #cbd5e1; display:flex; align-items:center; justify-content:center; flex-shrink:0; background:#fff; color:#a1a1aa; position:relative; z-index:1; }
+.journey-connector { height:3px; flex:1; background:#e4e4e7; margin:0 -1px 0 0; }
+.journey-done .journey-node { background:#111115; border-color:#111115; color:#ef4444; }
+.journey-done .journey-connector { background:#be1220; }
+.journey-active .journey-node { border:3px solid #be1220; box-shadow:0 0 0 5px #fee2e2; color:#be1220; }
+.journey-node-center { width:13px; height:13px; background:#be1220; border-radius:50%; }
+.journey-node-empty { width:10px; height:10px; background:#e4e4e7; border-radius:50%; }
+.journey-step-meta { font-size:10px; font-weight:800; letter-spacing:.09em; color:#a1a1aa; margin-top:13px; }
+.journey-done .journey-step-meta { color:#991b1b; }
+.journey-active .journey-step-meta { color:#be1220; }
+.journey-step-title { margin-top:5px; font-size:12px; font-weight:800; color:#71717a; line-height:1.4; max-width:124px; }
+.journey-done .journey-step-title,.journey-active .journey-step-title { color:#101014; }
+.journey-step-description { font-size:10px; color:#a1a1aa; line-height:1.5; margin-top:3px; max-width:128px; }
+.journey-footer { margin-top:14px; border-top:1px solid #f1f1f2; padding-top:16px; display:flex; flex-wrap:wrap; gap:16px; }
+.journey-legend { display:inline-flex; align-items:center; gap:6px; font-size:11px; color:#71717a; }
+.journey-legend-dot { width:11px; height:11px; border-radius:50%; display:inline-block; }
+@media (max-width: 767px) { .journey-track { width:max-content; } .journey-step { width:132px; } .journey-panel { padding:18px; } }
